@@ -1,301 +1,255 @@
 package main
 
-import "testing"
+import (
+	"testing"
+)
 
-func assertParentL(result AnalysisResult, expected OEItem, t *testing.T) {
-	if result.ParentL.Id != expected.Id {
-		t.Errorf("Wanted parent OE (L) %s, got: %s", expected.Id, result.ParentL.Id)
+func assertError(expected Error, errors []*Error, t *testing.T) {
+	var found bool
+	for _, e := range errors {
+		found = e.Message == expected.Message && e.Type == expected.Type
+		if found {
+			return
+		}
+	}
+
+	if !found {
+		t.Errorf("Wanted error: %s (%d), did not get it", expected.Message, expected.Type)
 	}
 }
 
-func assertNoParentL(result AnalysisResult, t *testing.T) {
-	if result.ParentL != nil {
-		t.Errorf("Wanted no parent OE (L), got: %s", result.ParentL.Id)
+func assertErrorCount(expected int, errors []*Error, t *testing.T) {
+	if len(errors) != expected {
+		t.Errorf("Wanted %d errors, got %d", expected, len(errors))
 	}
 }
 
-func assertHasParentLRef(result AnalysisResult, expected bool, t *testing.T) {
-	if result.HasParentLRef != expected {
-		t.Errorf("Wanted parent OE (L) ref: %t, got: %t", expected, result.HasParentLRef)
+func assertNoRelatedFS(item *OEItem, t *testing.T) {
+	if item.FS != nil {
+		t.Errorf("Wanted no related FS, got: %s", item.FS.Id)
 	}
 }
 
-func assertParentF(result AnalysisResult, expected OEItem, t *testing.T) {
-	if result.ParentF.Id != expected.Id {
-		t.Errorf("Wanted parent OE (F) %s, got: %s", expected.Id, result.ParentF.Id)
+func assertHasFSRef(item *OEItem, fsItem *FSItem, t *testing.T) {
+	if item.FS == nil {
+		t.Errorf("Wanted FS ref: %s, got no ref", fsItem.Id)
 	}
 }
 
-func assertNoParentF(result AnalysisResult, t *testing.T) {
-	if result.ParentF != nil {
-		t.Errorf("Wanted no parent OE (F), got: %s", result.ParentF.Id)
+func assertNoRelatedKU(item *OEItem, t *testing.T) {
+	if item.KU != nil {
+		t.Errorf("Wanted no related KU, got: %s", item.KU.Id)
 	}
 }
 
-func assertHasParentFRef(result AnalysisResult, expected bool, t *testing.T) {
-	if result.HasParentFRef != expected {
-		t.Errorf("Wanted parent OE (F) ref: %t, got: %t", expected, result.HasParentFRef)
+func assertHasKURef(item *OEItem, kuItem *KUItem, t *testing.T) {
+	if item.KU == nil {
+		t.Errorf("Wanted KU ref: %s, got no ref", kuItem.Id)
 	}
 }
 
-func assertRelatedFS(result AnalysisResult, expected FSItem, t *testing.T) {
-	if result.RelatedFS.Id != expected.Id {
-		t.Errorf("Wanted related FS %s, got: %s", expected.Id, result.RelatedFS.Id)
+func assertNoParentLRef(item *OEItem, t *testing.T) {
+	if item.ParentL != nil {
+		t.Errorf("Wanted no parent L, got: %s", item.ParentL.Id)
 	}
 }
 
-func assertNoRelatedFS(result AnalysisResult, t *testing.T) {
-	if result.RelatedFS != nil {
-		t.Errorf("Wanted no related FS, got: %s", result.RelatedFS.Id)
+func assertHasParentLRef(item *OEItem, other *OEItem, t *testing.T) {
+	if item.ParentL == nil {
+		t.Errorf("Wanted parent L ref: %s, got no ref", other.Id)
 	}
 }
 
-func assertHasFSRef(result AnalysisResult, expected bool, t *testing.T) {
-	if result.HasFSRef != expected {
-		t.Errorf("Wanted FS ref: %t, got: %t", expected, result.HasFSRef)
+func assertNoParentFRef(item *OEItem, t *testing.T) {
+	if item.ParentF != nil {
+		t.Errorf("Wanted no parent F, got: %s", item.ParentF.Id)
 	}
 }
 
-func assertRelatedKU(result AnalysisResult, expected KUItem, t *testing.T) {
-	if result.RelatedKU.Id != expected.Id {
-		t.Errorf("Wanted related KU %s, got: %s", expected.Id, result.RelatedKU.Id)
+func assertHasParentFRef(item *OEItem, other *OEItem, t *testing.T) {
+	if item.ParentF == nil {
+		t.Errorf("Wanted parent F ref: %s, got no ref", other.Id)
 	}
 }
 
-func assertNoRelatedKU(result AnalysisResult, t *testing.T) {
-	if result.RelatedKU != nil {
-		t.Errorf("Wanted no related KU, got: %s", result.RelatedKU.Id)
+func assertNoParentKU(item *KUItem, t *testing.T) {
+	if item.Parent != nil {
+		t.Errorf("Wanted no parent, got: %s", item.Parent.Id)
 	}
 }
 
-func assertHasKURef(result AnalysisResult, expected bool, t *testing.T) {
-	if result.HasKURef != expected {
-		t.Errorf("Wanted KU ref: %t, got: %t", expected, result.HasKURef)
+func assertHasParentKURef(item *KUItem, other *KUItem, t *testing.T) {
+	if item.Parent == nil {
+		t.Errorf("Wanted parent ref: %s, got no ref", other.Id)
 	}
 }
 
-func TestAnalyzeOEEmptyMaps(t *testing.T) {
-	maps := Maps{
-		KU: make(map[string]KUItem),
-		FS: make(map[string]FSItem),
-		OE: make(map[string]OEItem),
+func assertNoParentFS(item *FSItem, t *testing.T) {
+	if item.Parent != nil {
+		t.Errorf("Wanted no parent, got: %s", item.Parent.Id)
 	}
+}
 
-	oeItem := OEItem{
+func assertHasParentFSRef(item *FSItem, other *FSItem, t *testing.T) {
+	if item.Parent == nil {
+		t.Errorf("Wanted parent ref: %s, got no ref", other.Id)
+	}
+}
+
+func TestKUMissingParent(t *testing.T) {
+	kuMap := make(map[string]*KUItem)
+	fsMap := make(map[string]*FSItem)
+	oeMap := make(map[string]*OEItem)
+
+	kuItem := &KUItem{
+		Id:       "ku1",
+		ParentId: "ku10",
+	}
+	kuMap[kuItem.Id] = kuItem
+
+	buildTrees(oeMap, kuMap, fsMap)
+	analyzeTrees(oeMap, kuMap, fsMap)
+
+	assertErrorCount(1, kuItem.Errors, t)
+	assertNoParentKU(kuItem, t)
+	assertError(Error{Message: NON_EXISTING_PARENT, Type: NonExistingReference}, kuItem.Errors, t)
+}
+
+func TestKUGood(t *testing.T) {
+	kuMap := make(map[string]*KUItem)
+	fsMap := make(map[string]*FSItem)
+	oeMap := make(map[string]*OEItem)
+
+	kuItem := &KUItem{
+		Id:       "ku1",
+		ParentId: "ku10",
+	}
+	kuMap[kuItem.Id] = kuItem
+
+	kuMap["ku10"] = &KUItem{Id: "ku10"}
+
+	buildTrees(oeMap, kuMap, fsMap)
+	analyzeTrees(oeMap, kuMap, fsMap)
+
+	assertErrorCount(0, kuItem.Errors, t)
+	assertHasParentKURef(kuItem, kuMap["ku10"], t)
+}
+
+func TestFSMissingParent(t *testing.T) {
+	kuMap := make(map[string]*KUItem)
+	fsMap := make(map[string]*FSItem)
+	oeMap := make(map[string]*OEItem)
+
+	fsItem := &FSItem{
+		Id:       "fs1",
+		ParentId: "fs10",
+	}
+	fsMap[fsItem.Id] = fsItem
+
+	buildTrees(oeMap, kuMap, fsMap)
+	analyzeTrees(oeMap, kuMap, fsMap)
+
+	assertErrorCount(1, fsItem.Errors, t)
+	assertNoParentFS(fsItem, t)
+	assertError(Error{Message: NON_EXISTING_PARENT, Type: NonExistingReference}, fsItem.Errors, t)
+}
+
+func TestFSGood(t *testing.T) {
+	kuMap := make(map[string]*KUItem)
+	fsMap := make(map[string]*FSItem)
+	oeMap := make(map[string]*OEItem)
+
+	fsItem := &FSItem{
+		Id:       "fs1",
+		ParentId: "fs10",
+	}
+	fsMap[fsItem.Id] = fsItem
+
+	fsMap["fs10"] = &FSItem{Id: "fs10"}
+
+	buildTrees(oeMap, kuMap, fsMap)
+	analyzeTrees(oeMap, kuMap, fsMap)
+
+	assertErrorCount(0, fsItem.Errors, t)
+	assertHasParentFSRef(fsItem, fsMap["fs10"], t)
+}
+
+func TestOENoRefsAtAll(t *testing.T) {
+	kuMap := make(map[string]*KUItem)
+	fsMap := make(map[string]*FSItem)
+	oeMap := make(map[string]*OEItem)
+
+	oeItem := &OEItem{
+		Id: "oe1",
+	}
+	oeMap[oeItem.Id] = oeItem
+
+	buildTrees(oeMap, kuMap, fsMap)
+	analyzeTrees(oeMap, kuMap, fsMap)
+
+	assertErrorCount(2, oeItem.Errors, t)
+	assertNoRelatedKU(oeItem, t)
+	assertError(Error{Message: NO_RELATED_KU_ID, Type: MissingReference}, oeItem.Errors, t)
+	assertNoRelatedFS(oeItem, t)
+	assertError(Error{Message: NO_RELATED_FS_ID, Type: MissingReference}, oeItem.Errors, t)
+	assertNoParentLRef(oeItem, t)
+	assertNoParentFRef(oeItem, t)
+}
+
+func TestOENonExistingRefs(t *testing.T) {
+	kuMap := make(map[string]*KUItem)
+	fsMap := make(map[string]*FSItem)
+	oeMap := make(map[string]*OEItem)
+
+	oeItem := &OEItem{
 		Id:        "oe1",
-		FSId:      "fs1",
-		KUId:      "ku1",
 		ParentLId: "oe10",
 		ParentFId: "oe20",
+		KUId:      "ku1",
+		FSId:      "fs1",
 	}
+	oeMap[oeItem.Id] = oeItem
 
-	result := analyzeOE(oeItem, maps)
-	assertNoParentL(result, t)
-	assertHasParentLRef(result, true, t)
-	assertNoParentF(result, t)
-	assertHasParentFRef(result, true, t)
-	assertNoRelatedFS(result, t)
-	assertHasFSRef(result, true, t)
-	assertNoRelatedKU(result, t)
-	assertHasKURef(result, true, t)
+	buildTrees(oeMap, kuMap, fsMap)
+	analyzeTrees(oeMap, kuMap, fsMap)
+
+	assertErrorCount(4, oeItem.Errors, t)
+	assertNoRelatedKU(oeItem, t)
+	assertError(Error{Message: NON_EXISTING_RELATED_KU, Type: NonExistingReference}, oeItem.Errors, t)
+	assertNoRelatedFS(oeItem, t)
+	assertError(Error{Message: NON_EXISTING_RELATED_FS, Type: NonExistingReference}, oeItem.Errors, t)
+	assertNoParentLRef(oeItem, t)
+	assertError(Error{Message: NON_EXISTING_PARENT_L, Type: NonExistingReference}, oeItem.Errors, t)
+	assertNoParentFRef(oeItem, t)
+	assertError(Error{Message: NON_EXISTING_PARENT_F, Type: NonExistingReference}, oeItem.Errors, t)
 }
 
-func TestAnalyzeOENoKU(t *testing.T) {
-	maps := Maps{
-		KU: make(map[string]KUItem),
-		FS: make(map[string]FSItem),
-		OE: make(map[string]OEItem),
-	}
-	maps.FS["fs1"] = FSItem{Id: "fs1"}
-	maps.OE["oe10"] = OEItem{Id: "oe10"}
-	maps.OE["oe20"] = OEItem{Id: "oe20"}
+func TestOEFullPicture(t *testing.T) {
+	kuMap := make(map[string]*KUItem)
+	fsMap := make(map[string]*FSItem)
+	oeMap := make(map[string]*OEItem)
 
-	oeItem := OEItem{
+	oeItem := &OEItem{
 		Id:        "oe1",
-		FSId:      "fs1",
-		KUId:      "ku1",
 		ParentLId: "oe10",
 		ParentFId: "oe20",
-	}
-
-	result := analyzeOE(oeItem, maps)
-	assertParentL(result, maps.OE["oe10"], t)
-	assertHasParentLRef(result, true, t)
-	assertParentF(result, maps.OE["oe20"], t)
-	assertHasParentFRef(result, true, t)
-	assertRelatedFS(result, maps.FS["fs1"], t)
-	assertHasFSRef(result, true, t)
-	assertNoRelatedKU(result, t)
-	assertHasKURef(result, true, t)
-}
-
-func TestAnalyzeOENoFS(t *testing.T) {
-	maps := Maps{
-		KU: make(map[string]KUItem),
-		FS: make(map[string]FSItem),
-		OE: make(map[string]OEItem),
-	}
-	maps.KU["ku1"] = KUItem{Id: "ku1"}
-	maps.OE["oe10"] = OEItem{Id: "oe10"}
-	maps.OE["oe20"] = OEItem{Id: "oe20"}
-
-	oeItem := OEItem{
-		Id:        "oe1",
-		FSId:      "fs1",
 		KUId:      "ku1",
-		ParentLId: "oe10",
-		ParentFId: "oe20",
-	}
-
-	result := analyzeOE(oeItem, maps)
-	assertParentL(result, maps.OE["oe10"], t)
-	assertHasParentLRef(result, true, t)
-	assertParentF(result, maps.OE["oe20"], t)
-	assertHasParentFRef(result, true, t)
-	assertNoRelatedFS(result, t)
-	assertHasFSRef(result, true, t)
-	assertRelatedKU(result, maps.KU["ku1"], t)
-	assertHasKURef(result, true, t)
-}
-
-func TestAnalyzeOENoParentL(t *testing.T) {
-	maps := Maps{
-		KU: make(map[string]KUItem),
-		FS: make(map[string]FSItem),
-		OE: make(map[string]OEItem),
-	}
-	maps.FS["fs1"] = FSItem{Id: "fs1"}
-	maps.KU["ku1"] = KUItem{Id: "ku1"}
-	maps.OE["oe20"] = OEItem{Id: "oe20"}
-
-	oeItem := OEItem{
-		Id:        "oe1",
 		FSId:      "fs1",
-		KUId:      "ku1",
-		ParentLId: "oe10",
-		ParentFId: "oe20",
 	}
+	oeMap[oeItem.Id] = oeItem
 
-	result := analyzeOE(oeItem, maps)
-	assertNoParentL(result, t)
-	assertHasParentLRef(result, true, t)
-	assertParentF(result, maps.OE["oe20"], t)
-	assertHasParentFRef(result, true, t)
-	assertRelatedFS(result, maps.FS["fs1"], t)
-	assertHasFSRef(result, true, t)
-	assertRelatedKU(result, maps.KU["ku1"], t)
-	assertHasKURef(result, true, t)
-}
+	oeMap["oe10"] = &OEItem{Id: "oe10"}
+	oeMap["oe20"] = &OEItem{Id: "oe20"}
 
-func TestAnalyzeOENoParentF(t *testing.T) {
-	maps := Maps{
-		KU: make(map[string]KUItem),
-		FS: make(map[string]FSItem),
-		OE: make(map[string]OEItem),
-	}
-	maps.FS["fs1"] = FSItem{Id: "fs1"}
-	maps.KU["ku1"] = KUItem{Id: "ku1"}
-	maps.OE["oe10"] = OEItem{Id: "oe10"}
+	fsMap["fs1"] = &FSItem{Id: "fs1"}
+	kuMap["ku1"] = &KUItem{Id: "ku1"}
 
-	oeItem := OEItem{
-		Id:        "oe1",
-		FSId:      "fs1",
-		KUId:      "ku1",
-		ParentLId: "oe10",
-		ParentFId: "oe20",
-	}
+	buildTrees(oeMap, kuMap, fsMap)
+	analyzeTrees(oeMap, kuMap, fsMap)
 
-	result := analyzeOE(oeItem, maps)
-	assertParentL(result, maps.OE["oe10"], t)
-	assertHasParentLRef(result, true, t)
-	assertNoParentF(result, t)
-	assertHasParentFRef(result, true, t)
-	assertRelatedFS(result, maps.FS["fs1"], t)
-	assertHasFSRef(result, true, t)
-	assertRelatedKU(result, maps.KU["ku1"], t)
-	assertHasKURef(result, true, t)
-}
-
-func TestAnalyzeOENoParentLRef(t *testing.T) {
-	maps := Maps{
-		KU: make(map[string]KUItem),
-		FS: make(map[string]FSItem),
-		OE: make(map[string]OEItem),
-	}
-
-	oeItem := OEItem{
-		Id:        "oe1",
-		FSId:      "fs1",
-		KUId:      "ku1",
-		ParentFId: "oe20",
-	}
-
-	result := analyzeOE(oeItem, maps)
-	assertHasParentLRef(result, false, t)
-	assertHasParentFRef(result, true, t)
-	assertHasFSRef(result, true, t)
-	assertHasKURef(result, true, t)
-}
-
-func TestAnalyzeOENoParentFRef(t *testing.T) {
-	maps := Maps{
-		KU: make(map[string]KUItem),
-		FS: make(map[string]FSItem),
-		OE: make(map[string]OEItem),
-	}
-
-	oeItem := OEItem{
-		Id:        "oe1",
-		FSId:      "fs1",
-		KUId:      "ku1",
-		ParentLId: "oe10",
-	}
-
-	result := analyzeOE(oeItem, maps)
-	assertHasParentLRef(result, true, t)
-	assertHasParentFRef(result, false, t)
-	assertHasFSRef(result, true, t)
-	assertHasKURef(result, true, t)
-}
-
-func TestAnalyzeOENoFSRef(t *testing.T) {
-	maps := Maps{
-		KU: make(map[string]KUItem),
-		FS: make(map[string]FSItem),
-		OE: make(map[string]OEItem),
-	}
-
-	oeItem := OEItem{
-		Id:        "oe1",
-		KUId:      "ku1",
-		ParentLId: "oe10",
-		ParentFId: "oe20",
-	}
-
-	result := analyzeOE(oeItem, maps)
-	assertHasParentLRef(result, true, t)
-	assertHasParentFRef(result, true, t)
-	assertHasFSRef(result, false, t)
-	assertHasKURef(result, true, t)
-}
-
-func TestAnalyzeOENoKURef(t *testing.T) {
-	maps := Maps{
-		KU: make(map[string]KUItem),
-		FS: make(map[string]FSItem),
-		OE: make(map[string]OEItem),
-	}
-
-	oeItem := OEItem{
-		Id:        "oe1",
-		FSId:      "fs1",
-		ParentLId: "oe10",
-		ParentFId: "oe20",
-	}
-
-	result := analyzeOE(oeItem, maps)
-	assertHasParentLRef(result, true, t)
-	assertHasParentFRef(result, true, t)
-	assertHasFSRef(result, true, t)
-	assertHasKURef(result, false, t)
+	assertErrorCount(0, oeItem.Errors, t)
+	assertHasKURef(oeItem, kuMap["ku1"], t)
+	assertHasFSRef(oeItem, fsMap["fs1"], t)
+	assertHasParentLRef(oeItem, oeMap["oe10"], t)
+	assertHasParentFRef(oeItem, oeMap["oe20"], t)
 }

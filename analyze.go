@@ -83,6 +83,12 @@ func addNonExistingReferenceError(item *ItemWithError, message string) *Error {
 	return e
 }
 
+func addCycleError(item *ItemWithError, message string) *Error {
+	e := &Error{Message: message, Type: CycleError}
+	item.Errors = append(item.Errors, e)
+	return e
+}
+
 func addKUError(item *KUItem, e *Error, errors *Errors) {
 	_ = append(errors.KUErrors, &KUError{KU: item, Error: e})
 }
@@ -106,6 +112,7 @@ const (
 	NON_EXISTING_RELATED_KU = "non-existing related FS"
 	NO_RELATED_FS_ID        = "no related FS id"
 	NON_EXISTING_RELATED_FS = "non-existing related FS"
+	CYCLE_REFERENCE         = "cycle reference"
 )
 
 func analyzeTrees(oeMap map[string]*OEItem, kuMap map[string]*KUItem, fsMap map[string]*FSItem) *Errors {
@@ -117,6 +124,10 @@ func analyzeTrees(oeMap map[string]*OEItem, kuMap map[string]*KUItem, fsMap map[
 				addKUError(v, addNonExistingReferenceError(&v.ItemWithError, NON_EXISTING_PARENT), result)
 			}
 		}
+
+		if findCycleKU(v, []*string{}) {
+			addKUError(v, addCycleError(&v.ItemWithError, CYCLE_REFERENCE), result)
+		}
 	}
 
 	for _, v := range fsMap {
@@ -124,6 +135,10 @@ func analyzeTrees(oeMap map[string]*OEItem, kuMap map[string]*KUItem, fsMap map[
 			if _, ok := fsMap[v.ParentId]; !ok {
 				addFSError(v, addNonExistingReferenceError(&v.ItemWithError, NON_EXISTING_PARENT), result)
 			}
+		}
+
+		if findCycleFS(v, []*string{}) {
+			addFSError(v, addCycleError(&v.ItemWithError, CYCLE_REFERENCE), result)
 		}
 	}
 
@@ -151,7 +166,68 @@ func analyzeTrees(oeMap map[string]*OEItem, kuMap map[string]*KUItem, fsMap map[
 		} else if v.FS == nil {
 			addOEError(v, addNonExistingReferenceError(&v.ItemWithError, NON_EXISTING_RELATED_FS), result)
 		}
+
+		if findCycleOE(v, []*string{}) {
+			addOEError(v, addCycleError(&v.ItemWithError, CYCLE_REFERENCE), result)
+		}
 	}
 
 	return result
+}
+
+func findCycleFS(item *FSItem, visited []*string) bool {
+	if item == nil {
+		return false
+	}
+
+	if item.Parent == nil {
+		return false
+	}
+
+	for _, v := range visited {
+		if *v == item.Id {
+			return true
+		}
+	}
+
+	visited = append(visited, &item.Id)
+	return findCycleFS(item.Parent, visited)
+}
+
+func findCycleKU(item *KUItem, visited []*string) bool {
+	if item == nil {
+		return false
+	}
+
+	if item.Parent == nil {
+		return false
+	}
+
+	for _, v := range visited {
+		if *v == item.Id {
+			return true
+		}
+	}
+
+	visited = append(visited, &item.Id)
+	return findCycleKU(item.Parent, visited)
+}
+
+func findCycleOE(item *OEItem, visited []*string) bool {
+	if item == nil {
+		return false
+	}
+
+	if item.ParentL == nil && item.ParentF == nil {
+		return false
+	}
+
+	for _, v := range visited {
+		if *v == item.Id {
+			return true
+		}
+	}
+
+	visited = append(visited, &item.Id)
+	return findCycleOE(item.ParentL, visited) || findCycleOE(item.ParentF, visited)
 }

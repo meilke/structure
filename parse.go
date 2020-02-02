@@ -13,6 +13,7 @@ type ErrorType int
 const (
 	MissingReference ErrorType = iota
 	NonExistingReference
+	CycleError
 )
 
 type Error struct {

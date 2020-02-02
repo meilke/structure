@@ -135,6 +135,32 @@ func TestKUGood(t *testing.T) {
 	assertHasParentKURef(kuItem, kuMap["ku10"], t)
 }
 
+func TestKUCycle(t *testing.T) {
+	kuMap := make(map[string]*KUItem)
+	fsMap := make(map[string]*FSItem)
+	oeMap := make(map[string]*OEItem)
+
+	kuItem1 := &KUItem{
+		Id:       "ku1",
+		ParentId: "ku2",
+	}
+	kuMap[kuItem1.Id] = kuItem1
+
+	fsItem2 := &KUItem{
+		Id:       "ku2",
+		ParentId: "ku1",
+	}
+	kuMap[fsItem2.Id] = fsItem2
+
+	buildTrees(oeMap, kuMap, fsMap)
+	analyzeTrees(oeMap, kuMap, fsMap)
+
+	assertErrorCount(1, kuItem1.Errors, t)
+	assertError(Error{Message: CYCLE_REFERENCE, Type: CycleError}, kuItem1.Errors, t)
+	assertErrorCount(1, fsItem2.Errors, t)
+	assertError(Error{Message: CYCLE_REFERENCE, Type: CycleError}, fsItem2.Errors, t)
+}
+
 func TestFSMissingParent(t *testing.T) {
 	kuMap := make(map[string]*KUItem)
 	fsMap := make(map[string]*FSItem)
@@ -172,6 +198,32 @@ func TestFSGood(t *testing.T) {
 
 	assertErrorCount(0, fsItem.Errors, t)
 	assertHasParentFSRef(fsItem, fsMap["fs10"], t)
+}
+
+func TestFSCycle(t *testing.T) {
+	kuMap := make(map[string]*KUItem)
+	fsMap := make(map[string]*FSItem)
+	oeMap := make(map[string]*OEItem)
+
+	fsItem1 := &FSItem{
+		Id:       "fs1",
+		ParentId: "fs2",
+	}
+	fsMap[fsItem1.Id] = fsItem1
+
+	fsItem2 := &FSItem{
+		Id:       "fs2",
+		ParentId: "fs1",
+	}
+	fsMap[fsItem2.Id] = fsItem2
+
+	buildTrees(oeMap, kuMap, fsMap)
+	analyzeTrees(oeMap, kuMap, fsMap)
+
+	assertErrorCount(1, fsItem1.Errors, t)
+	assertError(Error{Message: CYCLE_REFERENCE, Type: CycleError}, fsItem1.Errors, t)
+	assertErrorCount(1, fsItem2.Errors, t)
+	assertError(Error{Message: CYCLE_REFERENCE, Type: CycleError}, fsItem2.Errors, t)
 }
 
 func TestOENoRefsAtAll(t *testing.T) {
@@ -252,4 +304,47 @@ func TestOEFullPicture(t *testing.T) {
 	assertHasFSRef(oeItem, fsMap["fs1"], t)
 	assertHasParentLRef(oeItem, oeMap["oe10"], t)
 	assertHasParentFRef(oeItem, oeMap["oe20"], t)
+}
+
+func TestOECycle(t *testing.T) {
+	kuMap := make(map[string]*KUItem)
+	fsMap := make(map[string]*FSItem)
+	oeMap := make(map[string]*OEItem)
+
+	fsMap["fs1"] = &FSItem{Id: "fs1"}
+	kuMap["ku1"] = &KUItem{Id: "ku1"}
+
+	oeItem1 := &OEItem{
+		Id:        "oe1",
+		ParentLId: "oe2",
+		KUId:      "ku1",
+		FSId:      "fs1",
+	}
+	oeMap[oeItem1.Id] = oeItem1
+
+	oeItem2 := &OEItem{
+		Id:        "oe2",
+		ParentFId: "oe3",
+		KUId:      "ku1",
+		FSId:      "fs1",
+	}
+	oeMap[oeItem2.Id] = oeItem2
+
+	oeItem3 := &OEItem{
+		Id:        "oe3",
+		ParentLId: "oe1",
+		KUId:      "ku1",
+		FSId:      "fs1",
+	}
+	oeMap[oeItem3.Id] = oeItem3
+
+	buildTrees(oeMap, kuMap, fsMap)
+	analyzeTrees(oeMap, kuMap, fsMap)
+
+	assertErrorCount(1, oeItem1.Errors, t)
+	assertError(Error{Message: CYCLE_REFERENCE, Type: CycleError}, oeItem1.Errors, t)
+	assertErrorCount(1, oeItem2.Errors, t)
+	assertError(Error{Message: CYCLE_REFERENCE, Type: CycleError}, oeItem2.Errors, t)
+	assertErrorCount(1, oeItem3.Errors, t)
+	assertError(Error{Message: CYCLE_REFERENCE, Type: CycleError}, oeItem3.Errors, t)
 }

@@ -35,20 +35,40 @@ func main() {
 	log.SetOutput(os.Stdout)
 	log.SetLevel(logLevels[*logLevel])
 
+	log.WithFields(log.Fields{
+		"path": *fsPath,
+	}).Info("parsing FS data...")
 	fsMap, err := parseFS(*fsPath)
 	exitOnError(err)
+	log.Info("successfully parsed FS data!")
 
+	log.WithFields(log.Fields{
+		"path": *kuPath,
+	}).Info("parsing KU data...")
 	kuMap, err := parseKU(*kuPath)
 	exitOnError(err)
+	log.Info("successfully parsed KU data!")
 
+	log.WithFields(log.Fields{
+		"path": *oePath,
+	}).Info("parsing OE data...")
 	oeItems, oeMap, err := parseOE(*oePath)
 	exitOnError(err)
+	log.Info("successfully parsed OE data!")
 
+	log.Info("building trees...")
 	buildTrees(oeMap, kuMap, fsMap)
+	log.Info("successfully built trees!")
+	log.Info("analyzing trees...")
 	analyzeTrees(oeMap, kuMap, fsMap)
+	log.Info("successfully analyzed trees!")
 
+	var foundError bool
+
+	foundError = false
 	for _, item := range oeItems {
 		if len(item.Errors) > 0 {
+			foundError = true
 			for _, e := range item.Errors {
 				log.WithFields(log.Fields{
 					"id":      item.Id,
@@ -59,8 +79,14 @@ func main() {
 		}
 	}
 
+	if !foundError {
+		log.Info("did not find any errors in OE data!")
+	}
+
+	foundError = false
 	for _, item := range kuMap {
 		if len(item.Errors) > 0 {
+			foundError = true
 			for _, e := range item.Errors {
 				log.WithFields(log.Fields{
 					"id":      item.Id,
@@ -71,8 +97,14 @@ func main() {
 		}
 	}
 
+	if !foundError {
+		log.Info("did not find any errors in KU data!")
+	}
+
+	foundError = false
 	for _, item := range fsMap {
 		if len(item.Errors) > 0 {
+			foundError = true
 			for _, e := range item.Errors {
 				log.WithFields(log.Fields{
 					"id":      item.Id,
@@ -81,6 +113,10 @@ func main() {
 				}).Info("FS with errors")
 			}
 		}
+	}
+
+	if !foundError {
+		log.Info("did not find any errors in FS data!")
 	}
 
 }
